@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Max Wells — Astrophotography</title>
+  <!-- Link preview when the site is shared (Instagram, WhatsApp, iMessage...) -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mwells77.github.io/">
+  <meta property="og:title" content="MW Astrophotography">
+  <meta property="og:image" content="https://mwells77.github.io/preview.jpg">
+  <meta property="og:image:width" content="847">
+  <meta property="og:image:height" content="443">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #000;
+      color: #fff;
+    }
+
+    /* Timing for the landing → gallery transition.
+       Forward timings live on body.in-gallery, reverse timings on the base rules
+       (CSS uses the transition of the state being entered). */
+    :root {
+      --ease-slide: cubic-bezier(0.76, 0, 0.24, 1);
+      --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      transform: translateY(0);
+      transition: transform 0.45s var(--ease-slide), opacity 0.8s ease;
+      will-change: transform;
+    }
+
+    /* Landing stays hidden until its first image and the fonts have loaded,
+       then image and text fade in together */
+    body.loading .hero {
+      opacity: 0;
+    }
+
+    body.in-gallery .hero {
+      transform: translateY(-100%);
+      transition: transform 0.45s var(--ease-slide);
+    }
+
+    .hero-image {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center bottom;
+      opacity: 0;
+      transition: opacity 1.2s ease-in-out;
+    }
+
+    .hero-image.active {
+      opacity: 1;
+    }
+
+    /* Only download the photo that's showing, the next one, and the one fading out;
+       the rest are fetched one at a time as the slideshow reaches them */
+    .hero-image:not(.active):not(.next):not(.prev) {
+      background-image: none !important;
+    }
+
+    .hero-text {
+      position: absolute;
+      z-index: 3;
+      left: clamp(2rem, 8vw, 8rem);
+      top: 50%;
+      transform: translateY(-50%);
+      transition: transform 0.45s var(--ease-slide), opacity 0.35s ease 0.1s;
+    }
+
+    /* Text lifts away a little faster than the photo for a sense of depth */
+    body.in-gallery .hero-text {
+      transform: translateY(calc(-50% - 18vh));
+      opacity: 0;
+      transition: transform 0.45s var(--ease-slide), opacity 0.3s ease;
+    }
+
+    .hero-text h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      font-size: clamp(2.6rem, 5.5vw, 5rem);
+      letter-spacing: 0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.3em;
+    }
+
+    .hero-text p {
+      font-size: clamp(1.1rem, 2vw, 1.6rem);
+      letter-spacing: 0.3em;
+      font-weight: 300;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .socials {
+      display: flex;
+      gap: 1.2rem;
+      margin-top: 1.2em;
+    }
+
+    .socials a {
+      color: rgba(255, 255, 255, 0.7);
+      transition: color 0.3s;
+      display: flex;
+      align-items: center;
+    }
+
+    .socials a:hover {
+      color: #fff;
+    }
+
+    .socials svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    /* Scroll cue */
+    .scroll-cue {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: 2.2rem;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.7);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      transition: color 0.3s, opacity 0.5s;
+    }
+
+    .scroll-cue:hover {
+      color: #fff;
+    }
+
+    /* Downward chevron: two sides of a square, rotated */
+    .scroll-cue .chevron {
+      width: 10px;
+      height: 10px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(45deg);
+    }
+
+    body.in-gallery .scroll-cue {
+      opacity: 0;
+    }
+
+    /* ─── BLACKOUT + STARS ─── */
+    .blackout {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.45s ease;
+    }
+
+    body.in-gallery .blackout {
+      opacity: 1;
+      transition: opacity 0.45s ease;
+    }
+
+    .stars {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    body.in-gallery .stars {
+      opacity: 1;
+      transition: opacity 0.35s ease 0.1s;
+    }
+
+    /* ─── GALLERY VIEW ─── */
+    .gallery-view {
+      position: fixed;
+      inset: 0;
+      z-index: 4;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    }
+
+    body.in-gallery .gallery-view {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.3s ease 0.15s, visibility 0s linear 0s;
+    }
+
+    body.gallery-ready .gallery-view {
+      pointer-events: auto;
+    }
+
+    .gallery-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      --gutter: clamp(1.25rem, 4vw, 4rem);
+      padding: 2rem max(var(--gutter), calc((100% - 1800px) / 2 + var(--gutter))) 1.6rem;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 60%, transparent 100%);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 2rem;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: clamp(1.5rem, 3vw, 3rem);
+    }
+
+    /* Filters only belong to the Gallery view. They fade rather than disappear,
+       and keep their space, so nothing below them moves when switching sections */
+    .gallery-filters {
+      transition: opacity 0.3s ease, visibility 0s linear 0s;
+    }
+
+    .gallery-header:not(.show-filters) .gallery-filters {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+    }
+
+    .brand {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 500;
+      font-size: 1.35rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fff;
+      background: none;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      opacity: 0.9;
+      transition: opacity 0.3s;
+    }
+
+    .brand:hover {
+      opacity: 1;
+    }
+
+    .gallery-filters {
+      display: flex;
+      gap: clamp(1.2rem, 2.2vw, 2.2rem);
+      margin-top: 1.4rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .gallery-filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-btn,
+    .filter-btn {
+      position: relative;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 0.5rem 0;
+      white-space: nowrap;
+      transition: color 0.3s ease;
+    }
+
+    .filter-btn {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.38);
+    }
+
+    .nav-btn:hover,
+    .filter-btn:hover {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .nav-btn.active,
+    .filter-btn.active {
+      color: #fff;
+    }
+
+    .nav-btn::after,
+    .filter-btn::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1px;
+      background: #fff;
+      transform: scaleX(0);
+      transition: transform 0.4s var(--ease-out);
+    }
+
+    .nav-btn.active::after,
+    .filter-btn.active::after {
+      transform: scaleX(1);
+    }
+
+    /* ─── VIEWS (Gallery / Stories / About me) ─── */
+    /* Switching sections: the old one leaves quickly, the new one glides in */
+    /* Each section fills the space between header and footer, so a short
+       section (About me) fits on one screen with the footer at the bottom */
+    .gallery-header,
+    .footer {
+      flex-shrink: 0;
+    }
+
+    .view {
+      flex: 1 0 auto;
+      transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .view.leaving {
+      transition-duration: 0.18s;
+    }
+
+    /* The incoming section uses an animation rather than a transition: it has
+       just been un-hidden, and transitions don't reliably start from hidden */
+    .view.entering {
+      animation: view-in 0.45s cubic-bezier(0.25, 0.8, 0.25, 1) both;
+    }
+
+    @keyframes view-in {
+      from { opacity: 0; transform: translateX(var(--shift, 0px)); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* --shift slides the view sideways as it fades (set in JS from the direction) */
+    .view.fading {
+      opacity: 0;
+      transform: translateX(var(--shift, 0px));
+    }
+
+    .view[data-view="about"]:not([hidden]) {
+      display: flex;
+      align-items: center;
+    }
+
+    .view[hidden] {
+      display: none;
+    }
+
+    .placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .placeholder h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 500;
+      font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+      letter-spacing: 0.08em;
+    }
+
+    .placeholder p {
+      font-size: 0.8rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      opacity: 0.45;
+    }
+
+    /* Justified rows: each tile grows in proportion to its aspect ratio */
+    .gallery-grid {
+      --row: 270px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 1rem clamp(1.25rem, 4vw, 4rem) 4rem;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    .gallery-grid::after {
+      content: '';
+      flex-grow: 10000;
+    }
+
+    .tile {
+      position: relative;
+      flex-shrink: 1;
+      flex-basis: calc(var(--r) * var(--row));
+      aspect-ratio: var(--r);
+      overflow: hidden;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tile img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transform: scale(1.01);
+      transition: opacity 0.8s ease, transform 0.8s var(--ease-out), filter 0.5s ease;
+      filter: brightness(0.9);
+    }
+
+    .tile img.loaded {
+      opacity: 1;
+    }
+
+    .tile:hover img {
+      transform: scale(1.04);
+      filter: brightness(1.05);
+    }
+
+    .tile:focus-visible {
+      outline: 1px solid rgba(255, 255, 255, 0.7);
+      outline-offset: 3px;
+    }
+
+    /* Each tile fades in slowly after its own random delay (--d, set in JS) */
+    .gallery-grid.play .tile {
+      animation: rise 0.7s var(--ease-out) both;
+      animation-delay: calc(var(--base, 0s) + var(--d, 0s));
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── ABOUT ─── */
+    .about-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(2rem, 5vw, 6rem);
+      padding: clamp(2rem, 6vh, 5rem) clamp(1.5rem, 4vw, 4rem);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .about-text .socials {
+      margin-top: 2rem;
+    }
+
+    /* Fixed size from the start (no lazy loading) so the text never jumps
+       when the photo arrives; the photo itself fades in once loaded */
+    .about-photo {
+      flex-shrink: 0;
+      height: clamp(260px, calc(88vh - 300px), 550px);
+      width: auto;
+      aspect-ratio: 676 / 1203;
+      max-width: 40vw;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .about-photo.loaded {
+      opacity: 1;
+    }
+
+    .about-text {
+      max-width: 640px;
+    }
+
+    .about-text h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 600;
+      font-size: clamp(1.4rem, 2.5vw, 2rem);
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    .about-text p {
+      font-size: clamp(0.95rem, 1.15vw, 1.1rem);
+      line-height: 1.75;
+      opacity: 0.7;
+      overflow-wrap: anywhere;
+    }
+
+    .about-text p + p {
+      margin-top: 1.2em;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      transition: opacity 0.35s ease;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem 1.5rem;
+      padding: 2.5rem 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .footer .socials {
+      margin: 0;
+    }
+
+    .footer .socials svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Hidden while sections switch, so it never jumps into its new place */
+    .footer.fading {
+      opacity: 0;
+      transition-duration: 0.18s;
+    }
+
+    .footer span {
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .footer-note {
+      flex-basis: 100%;
+      text-align: center;
+      padding: 0 1rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* ─── LIGHTBOX ─── */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    .lightbox.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .lightbox-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.94);
+      cursor: pointer;
+    }
+
+    .lightbox-img {
+      position: relative;
+      z-index: 1;
+      max-height: 88vh;
+      max-width: 88vw;
+      object-fit: contain;
+      transform: scale(0.94);
+      transition: transform 0.35s ease, opacity 0.25s ease;
+    }
+
+    .lightbox.open .lightbox-img {
+      transform: scale(1);
+    }
+
+    .lightbox-nav {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 1.5rem 1rem;
+      transition: color 0.3s;
+    }
+
+    .lightbox-nav:hover {
+      color: #fff;
+    }
+
+    .lightbox-nav svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .lightbox-nav.prev { left: clamp(0.25rem, 2vw, 2rem); }
+    .lightbox-nav.next { right: clamp(0.25rem, 2vw, 2rem); }
+
+    /* Phones and tablets: no arrows, swipe instead (pinch-zoom still allowed) */
+    @media (hover: none) and (pointer: coarse) {
+      .lightbox-nav {
+        display: none;
+      }
+
+      .lightbox {
+        touch-action: pinch-zoom;
+      }
+
+      .lightbox-img {
+        max-width: 100vw;
+      }
+    }
+
+    .lightbox-close {
+      position: absolute;
+      z-index: 2;
+      top: 1.2rem;
+      right: 1.4rem;
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      padding: 0.5rem;
+      transition: color 0.3s;
+    }
+
+    .lightbox-close:hover {
+      color: #fff;
+    }
+
+    .lightbox-close svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 760px) {
+      .gallery-header {
+        padding-top: 1.2rem;
+      }
+
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.7rem;
+      }
+
+      .site-nav {
+        gap: 1.4rem;
+      }
+
+      .brand {
+        font-size: 1.1rem;
+      }
+
+      .nav-btn {
+        font-size: 0.85rem;
+      }
+
+      .filter-btn {
+        font-size: 0.75rem;
+      }
+
+      .gallery-filters {
+        width: 100%;
+        margin-top: 0.8rem;
+      }
+
+      .gallery-grid {
+        --row: 150px;
+        gap: 8px;
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .about-section {
+        flex-direction: column;
+      }
+
+      .about-photo {
+        height: min(420px, 55vh);
+        max-width: 100%;
+      }
+    }
+
+    /* "Reduce motion" (e.g. Windows animation effects off): keep every fade and
+       the twinkle, but drop the big movements. The landing fades to black
+       instead of sliding up, and tiles fade in without rising. */
+    @media (prefers-reduced-motion: reduce) {
+      body.in-gallery .hero {
+        transform: none;
+      }
+
+      body.in-gallery .hero-text {
+        transform: translateY(-50%);
+      }
+
+      .gallery-grid.play .tile {
+        animation-name: fade;
+      }
+
+      @keyframes fade {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+    }
+  </style>
+</head>
+<body class="loading">
+
+  <!-- Landing -->
+  <div class="hero" id="hero">
+    <div class="hero-image active" style="background-image: url('photos/large/darkerncrop.jpg')"></div>
+    <div class="hero-image" style="background-image: url('photos/large/1.jpg')"></div>
+    <div class="hero-image" style="background-image: url('photos/large/hillsidestar.jpg')"></div>
+    <div class="hero-image" style="background-image: url('photos/large/trailback-1.jpg')"></div>
+    <div class="hero-image" style="background-image: url('photos/large/2.jpg')"></div>
+    <div class="hero-text">
+      <h1>Max Wells</h1>
+      <p>Astrophotography</p>
+    </div>
+    <button class="scroll-cue" id="scrollCue" aria-label="View gallery">
+      Gallery
+      <span class="chevron" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div class="blackout"></div>
+  <canvas class="stars" id="stars" aria-hidden="true"></canvas>
+
+  <!-- Gallery -->
+  <main class="gallery-view" id="galleryView" aria-hidden="true">
+    <header class="gallery-header show-filters" id="galleryHeader">
+      <div class="header-top">
+        <button class="brand" id="brandBtn" aria-label="Back to landing">Max Wells</button>
+        <nav class="site-nav" id="siteNav">
+          <button class="nav-btn active" data-view="gallery">Gallery</button>
+          <!-- Stories is disabled for now (see CLAUDE.md). Restore this button to bring it back:
+          <button class="nav-btn" data-view="stories">Stories</button> -->
+          <button class="nav-btn" data-view="about">About me</button>
+        </nav>
+      </div>
+      <!-- Filter buttons are built from gallery.json -->
+      <nav class="gallery-filters" id="galleryFilters"></nav>
+    </header>
+
+    <div class="view" data-view="gallery">
+      <section class="gallery-grid" id="galleryGrid"></section>
+    </div>
+
+    <!-- Stories: disabled for now, not reachable from the nav -->
+    <div class="view placeholder" data-view="stories" hidden>
+      <h2>Stories</h2>
+      <p>Coming soon</p>
+    </div>
+
+    <div class="view" data-view="about" hidden>
+      <section class="about-section">
+        <img class="about-photo" src="profile.jpg" alt="Max Wells" width="676" height="1203" decoding="sync">
+        <div class="about-text">
+          <h2>About me</h2>
+          <p>Hi! My name's Max. I do astrophotography as a hobby and I'm studying physics in uni. I hope you enjoy my collection of the various photos I've taken over the years!</p>
+        </div>
+      </section>
+    </div>
+
+    <footer class="footer">
+      <span>© 2026 Max Wells</span>
+      <p class="footer-note">All photographs are my own work. Please ask before using them!</p>
+    </footer>
+  </main>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="lightbox-backdrop" id="lightboxBackdrop"></div>
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="lightbox-nav prev" id="lightboxPrev" aria-label="Previous image">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <img class="lightbox-img" id="lightboxImg" src="" alt="">
+    <button class="lightbox-nav next" id="lightboxNext" aria-label="Next image">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <script>
+
+    // ─── Gallery data ───
+    // Images and filters live in gallery.json, kept up to date by tools/sync.py; tags edited with Edit Tags.bat.
+    // Gallery shows newest first, reading left to right.
+    let allImages = [];
+    let filterLabels = {};
+
+    const galleryView = document.getElementById('galleryView');
+    const galleryGrid = document.getElementById('galleryGrid');
+    const filtersEl = document.getElementById('galleryFilters');
+    let visibleImages = [];
+
+    const escapeHtml = (str) => String(str).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function altText(img) {
+      if (img.title) return img.title;
+      const label = (img.filters || []).map(f => filterLabels[f]).filter(Boolean)[0];
+      return (label ? label + ' ' : '') + 'photograph';
+    }
+
+    function renderFilters(filters) {
+      // Only show filters that have at least one photo. Hidden tags (e.g. "hero" =
+      // landing slideshow) are for the site's own use, not filter buttons.
+      const used = filters.filter(f => !f.hidden && allImages.some(img => (img.filters || []).includes(f.id)));
+      filtersEl.innerHTML = ['<button class="filter-btn active" data-filter="all">All</button>']
+        .concat(used.map(f => `<button class="filter-btn" data-filter="${escapeHtml(f.id)}">${escapeHtml(f.label)}</button>`))
+        .join('');
+    }
+
+    function renderGallery(filter) {
+      visibleImages = filter === 'all'
+        ? allImages
+        : allImages.filter(img => (img.filters || []).includes(filter));
+      galleryGrid.innerHTML = visibleImages.map((img, i) => {
+        const r = (img.w / img.h).toFixed(4);
+        return `<figure class="tile" tabindex="0" data-index="${i}" style="--r:${r}; flex-grow:${r}">
+          <img src="${escapeHtml(encodeURI(img.thumb || img.src))}" alt="${escapeHtml(altText(img))}" loading="lazy" decoding="async">
+        </figure>`;
+      }).join('');
+
+      galleryGrid.querySelectorAll('img').forEach(img => {
+        if (img.complete && img.naturalWidth) img.classList.add('loaded');
+        else img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
+      });
+    }
+
+    // Restart the staggered fade-in; `base` delays it to sit after the page transition
+    // Pop-in only runs when asked (arriving from the landing, or changing filter).
+    // Once it's finished the 'play' class is removed, otherwise the browser would
+    // replay it whenever the Gallery is re-shown after visiting About me.
+    let playTimer = null;
+    function playGrid(base) {
+      clearTimeout(playTimer);
+      galleryGrid.classList.remove('play');
+      galleryGrid.style.setProperty('--base', base);
+      // Fresh random offsets every time, up to 0.5s apart
+      galleryGrid.querySelectorAll('.tile').forEach(tile => {
+        tile.style.setProperty('--d', (Math.random() * 0.5).toFixed(2) + 's');
+      });
+      void galleryGrid.offsetWidth;
+      galleryGrid.classList.add('play');
+      // longest possible pop-in: base delay + 0.5s random offset + 0.7s fade
+      playTimer = setTimeout(() => galleryGrid.classList.remove('play'), (parseFloat(base) + 1.3) * 1000);
+    }
+
+    filtersEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn || btn.classList.contains('active')) return;
+      filtersEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderGallery(btn.dataset.filter);
+      galleryView.scrollTo({ top: 0 });
+      playGrid('0s');
+    });
+
+    // About me photo: fade in once loaded
+    const aboutPhoto = document.querySelector('.about-photo');
+    // decode() unpacks it ahead of time, so it's ready to paint the instant About me appears
+    const photoReady = () => aboutPhoto.decode().catch(() => {}).then(() => aboutPhoto.classList.add('loaded'));
+    if (aboutPhoto.complete && aboutPhoto.naturalWidth) photoReady();
+    else aboutPhoto.addEventListener('load', photoReady, { once: true });
+
+    // ─── Views: Gallery / About me (Stories is disabled for now) ───
+    const siteNav = document.getElementById('siteNav');
+    const galleryHeader = document.getElementById('galleryHeader');
+    const views = document.querySelectorAll('.view');
+    const footer = document.querySelector('.footer');
+    let currentView = 'gallery';
+    let viewTimer = null;
+
+    // The order of the nav buttons is the order you swipe through
+    const viewOrder = () => [...siteNav.querySelectorAll('.nav-btn')].map(b => b.dataset.view);
+
+    function showView(name, instant = false) {
+      if (name === currentView && !instant) return;
+      const order = viewOrder();
+      const dir = Math.sign(order.indexOf(name) - order.indexOf(currentView)); // 1 = forwards
+      const from = document.querySelector(`.view[data-view="${currentView}"]`);
+      const to = document.querySelector(`.view[data-view="${name}"]`);
+      currentView = name;
+
+      siteNav.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+      // Leaving the Gallery: filters fade out together with it.
+      // Arriving at the Gallery: they fade back in together with it (in swap).
+      if (name !== 'gallery') galleryHeader.classList.remove('show-filters');
+
+      const swap = () => {
+        if (name === 'gallery') galleryHeader.classList.add('show-filters');
+        views.forEach(v => { v.hidden = v !== to; v.classList.remove('fading', 'leaving', 'entering'); });
+        footer.classList.remove('fading');
+        galleryView.scrollTop = 0;
+      };
+
+      clearTimeout(viewTimer);
+      if (instant) {
+        swap();
+        return;
+      }
+      from.style.setProperty('--shift', `${-dir * 30}px`);
+      from.classList.add('leaving', 'fading');
+      footer.classList.add('fading');
+      viewTimer = setTimeout(() => {
+        // Show the new section and glide it in from the side
+        to.style.setProperty('--shift', `${dir * 30}px`);
+        swap();
+        to.classList.add('entering');
+        const done = (e) => {
+          if (e.target !== to) return;  // ignore the gallery tiles' own animations
+          to.classList.remove('entering');
+          to.removeEventListener('animationend', done);
+        };
+        to.addEventListener('animationend', done);
+      }, 180);
+    }
+
+    siteNav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.nav-btn');
+      if (btn) showView(btn.dataset.view);
+    });
+
+    // Swipe left/right on touch screens to move between sections.
+    // Ignored inside the filter row (it scrolls sideways) and while a photo is open.
+    let secX = null, secY = null;
+
+    galleryView.addEventListener('touchstart', (e) => {
+      const inFilters = e.target.closest('.gallery-filters');
+      if (e.touches.length !== 1 || inFilters || lightboxOpen() || transitioning) { secX = null; return; }
+      secX = e.touches[0].clientX;
+      secY = e.touches[0].clientY;
+    }, { passive: true });
+
+    galleryView.addEventListener('touchend', (e) => {
+      if (secX === null) return;
+      const dx = e.changedTouches[0].clientX - secX;
+      const dy = e.changedTouches[0].clientY - secY;
+      secX = null;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;  // mostly vertical: normal scrolling
+      const order = viewOrder();
+      const next = order[order.indexOf(currentView) + (dx < 0 ? 1 : -1)];
+      if (next) showView(next);
+    }, { passive: true });
+
+    fetch('gallery.json', { cache: 'no-cache' })
+      .then(res => res.json())
+      .then(data => {
+        allImages = data.images.slice().sort((a, b) => b.date.localeCompare(a.date));
+        filterLabels = Object.fromEntries(data.filters.filter(f => !f.hidden).map(f => [f.id, f.label]));
+        renderFilters(data.filters);
+        renderGallery('all');
+        if (document.body.classList.contains('in-gallery')) playGrid('0s');
+      })
+      .catch(err => {
+        console.error('Could not load gallery.json', err);
+        galleryGrid.innerHTML = '<p style="opacity:.5">Gallery failed to load. Open the site through the local server (python -m http.server 3000).</p>';
+      });
+
+    // ─── Lightbox ───
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightboxImg');
+    let lightboxIndex = -1;
+
+    function showLightboxImage(i) {
+      lightboxIndex = (i + visibleImages.length) % visibleImages.length;
+      const img = visibleImages[lightboxIndex];
+      const index = lightboxIndex;
+      lightboxImg.src = encodeURI(img.thumb || img.src);
+      lightboxImg.alt = altText(img);
+      if (img.thumb) {
+        const full = new Image();
+        full.onload = () => { if (lightboxIndex === index) lightboxImg.src = full.src; };
+        full.src = encodeURI(img.src);
+      }
+    }
+
+    function openLightbox(i) {
+      showLightboxImage(i);
+      lightbox.classList.add('open');
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      lightboxIndex = -1;
+      lightboxImg.style.transition = '';
+      lightboxImg.style.transform = '';
+      lightboxImg.style.opacity = '';
+    }
+
+    const lightboxOpen = () => lightbox.classList.contains('open');
+
+    document.getElementById('lightboxBackdrop').addEventListener('click', closeLightbox);
+    document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+    document.getElementById('lightboxPrev').addEventListener('click', () => showLightboxImage(lightboxIndex - 1));
+    document.getElementById('lightboxNext').addEventListener('click', () => showLightboxImage(lightboxIndex + 1));
+
+    // Swipe between images on touch screens: the photo follows your finger,
+    // then slides out and the next one slides in from the other side.
+    let swipeStartX = null, swipeStartY = null, swipeDX = 0, swipeLocked = null;
+
+    lightbox.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { swipeStartX = null; return; }  // leave pinch-zoom alone
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
+      swipeDX = 0;
+      swipeLocked = null;
+      lightboxImg.style.transition = 'none';
+    }, { passive: true });
+
+    lightbox.addEventListener('touchmove', (e) => {
+      if (swipeStartX === null || e.touches.length !== 1) return;
+      const dx = e.touches[0].clientX - swipeStartX;
+      const dy = e.touches[0].clientY - swipeStartY;
+      if (swipeLocked === null && Math.hypot(dx, dy) > 8) swipeLocked = Math.abs(dx) > Math.abs(dy);
+      if (!swipeLocked) return;
+      swipeDX = dx;
+      lightboxImg.style.transform = `translateX(${dx}px)`;
+      lightboxImg.style.opacity = String(1 - Math.min(Math.abs(dx) / window.innerWidth, 0.6));
+    }, { passive: true });
+
+    lightbox.addEventListener('touchend', () => {
+      if (swipeStartX === null) return;
+      swipeStartX = null;
+      const dir = swipeDX < -50 ? 1 : swipeDX > 50 ? -1 : 0;
+      lightboxImg.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+
+      if (!dir) {  // not far enough: snap back
+        lightboxImg.style.transform = '';
+        lightboxImg.style.opacity = '';
+        return;
+      }
+
+      lightboxImg.style.transform = `translateX(${dir * -100}vw)`;
+      lightboxImg.style.opacity = '0';
+      setTimeout(() => {
+        lightboxImg.style.transition = 'none';
+        showLightboxImage(lightboxIndex + dir);
+        lightboxImg.style.transform = `translateX(${dir * 40}vw)`;
+        void lightboxImg.offsetWidth;
+        lightboxImg.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+        lightboxImg.style.transform = '';
+        lightboxImg.style.opacity = '';
+      }, 220);
+    });
+
+    // A tap that was really a swipe shouldn't close the viewer
+    document.getElementById('lightboxBackdrop').addEventListener('click', (e) => {
+      if (Math.abs(swipeDX) > 10) { e.stopImmediatePropagation(); swipeDX = 0; }
+    }, true);
+
+    galleryGrid.addEventListener('click', (e) => {
+      const tile = e.target.closest('.tile');
+      if (tile) openLightbox(+tile.dataset.index);
+    });
+
+    galleryGrid.addEventListener('keydown', (e) => {
+      const tile = e.target.closest('.tile');
+      if (tile && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        openLightbox(+tile.dataset.index);
+      }
+    });
+
+    // ─── Hero cycling ───
+    // Shuffle the landing photos so each visit starts on a random one, in a random order
+    (() => {
+      const slides = [...document.querySelectorAll('.hero-image')];
+      for (let i = slides.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [slides[i], slides[j]] = [slides[j], slides[i]];
+      }
+      const anchor = document.querySelector('.hero-text');
+      slides.forEach((el, i) => {
+        el.classList.toggle('active', i === 0);
+        anchor.before(el);
+      });
+    })();
+
+    const heroImages = document.querySelectorAll('.hero-image');
+    let currentHero = 0;
+    let heroInterval = null;
+
+    function markNextHero() {
+      heroImages.forEach(el => el.classList.remove('next'));
+      if (heroImages.length > 1) heroImages[(currentHero + 1) % heroImages.length].classList.add('next');
+    }
+
+    function goToHero(index) {
+      const old = heroImages[currentHero];
+      old.classList.remove('active');
+      old.classList.add('prev');  // keep its photo while it fades out
+      setTimeout(() => old.classList.remove('prev'), 1300);
+      currentHero = (index + heroImages.length) % heroImages.length;
+      heroImages[currentHero].classList.remove('prev');
+      heroImages[currentHero].classList.add('active');
+      markNextHero();
+    }
+
+    function startHeroCycling() {
+      if (!heroInterval) heroInterval = setInterval(() => goToHero(currentHero + 1), 4500);
+    }
+
+    function stopHeroCycling() {
+      clearInterval(heroInterval);
+      heroInterval = null;
+    }
+
+    // Reveal the landing once the first hero image and the fonts are ready
+    // (with a fallback so a slow connection never leaves a blank screen)
+    const heroUrl = (el) => (el.style.backgroundImage.match(/url\(["']?(.*?)["']?\)/) || [])[1];
+    const loadImage = (src) => new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = resolve;
+      img.src = src;
+    });
+
+    let heroRevealed = false;
+    function revealHero() {
+      if (heroRevealed) return;
+      heroRevealed = true;
+      document.body.classList.remove('loading');
+      if (mode === 'landing') startHeroCycling();
+      // Start loading the next photo now, so it's ready when the slideshow moves on
+      markNextHero();
+    }
+
+    Promise.all([loadImage(heroUrl(heroImages[0])), document.fonts.ready]).then(revealHero);
+    setTimeout(revealHero, 6000);
+
+    // ─── Starfield ───
+    const canvas = document.getElementById('stars');
+    const ctx = canvas.getContext('2d');
+    let stars = [];
+    let starsRunning = false;
+    let cw = 0, ch = 0;
+
+    // Stars scroll at this fraction of the gallery's scroll speed
+    const STAR_PARALLAX = 0.2;
+
+    function buildStars() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cw = window.innerWidth;
+      ch = window.innerHeight;
+      canvas.width = cw * dpr;
+      canvas.height = ch * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const count = Math.min(600, Math.round((cw * ch) / 2500));
+      stars = Array.from({ length: count }, () => {
+        // Most stars are faint; roughly 1 in 12 is noticeably brighter and larger
+        const bright = Math.random() < 0.08;
+        return {
+          x: Math.random() * cw,
+          y: Math.random() * ch,
+          r: bright ? 1.1 + Math.random() * 0.6 : 0.4 + Math.random() * 0.5,
+          base: bright ? 0.8 + Math.random() * 0.2 : 0.2 + Math.random() * 0.35,
+          // Slow twinkle: one full cycle every ~4–10 seconds
+          speed: (Math.PI * 2) / (4 + Math.random() * 6),
+          phase: Math.random() * Math.PI * 2,
+        };
+      });
+    }
+
+    function drawStars(t) {
+      ctx.clearRect(0, 0, cw, ch);
+      const offset = galleryView.scrollTop * STAR_PARALLAX;
+      const time = t / 1000;
+      ctx.fillStyle = '#fff';
+
+      for (const s of stars) {
+        // Brightness dips to ~40% of its base and back
+        const twinkle = 0.7 + 0.3 * Math.sin(time * s.speed + s.phase);
+        let y = (s.y - offset) % ch;
+        if (y < 0) y += ch;
+
+        ctx.globalAlpha = s.base * twinkle;
+        ctx.beginPath();
+        ctx.arc(s.x, y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function starLoop(t) {
+      if (!starsRunning) return;
+      drawStars(t);
+      requestAnimationFrame(starLoop);
+    }
+
+    function startStars() {
+      if (starsRunning) return;
+      starsRunning = true;
+      requestAnimationFrame(starLoop);
+    }
+
+    function stopStars() {
+      starsRunning = false;
+    }
+
+    buildStars();
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        buildStars();
+        if (!starsRunning) drawStars(performance.now());
+      }, 150);
+    });
+
+    // ─── Landing ⇄ gallery transition ───
+    const ENTER_MS = 600;
+    const LEAVE_MS = 500;
+    let mode = 'landing';          // 'landing' | 'gallery'
+    let transitioning = false;
+    let stopStarsTimer = null;
+
+    function enterGallery() {
+      if (mode === 'gallery' || transitioning) return;
+      mode = 'gallery';
+      transitioning = true;
+      stopHeroCycling();
+      clearTimeout(heroResumeTimer);
+      clearTimeout(stopStarsTimer);
+      startStars();
+      showView(currentView, true);  // return to whichever section you were last on (Gallery on first visit)
+      galleryView.scrollTop = 0;
+      galleryView.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('in-gallery');
+      if (currentView === 'gallery') playGrid('0.45s');  // the pop-in only belongs to the Gallery
+
+      setTimeout(() => {
+        transitioning = false;
+        document.body.classList.add('gallery-ready');
+      }, ENTER_MS);
+    }
+
+    function leaveGallery() {
+      if (mode === 'landing' || transitioning) return;
+      mode = 'landing';
+      transitioning = true;
+      closeLightbox();
+      galleryView.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('gallery-ready', 'in-gallery');
+      startHeroCycling();
+      stopStarsTimer = setTimeout(stopStars, 400);
+
+      setTimeout(() => {
+        transitioning = false;
+        galleryGrid.classList.remove('play');
+      }, LEAVE_MS);
+    }
+
+    document.getElementById('scrollCue').addEventListener('click', enterGallery);
+    document.getElementById('brandBtn').addEventListener('click', () => {
+      if (galleryView.scrollTop > 0) galleryView.scrollTo({ top: 0, behavior: 'smooth' });
+      else leaveGallery();
+    });
+
+    // Wheel: a downward scroll on the landing enters; a *fresh* upward gesture
+    // that starts while the gallery is at the top leaves (so momentum from
+    // scrolling up through the grid doesn't fling you out).
+    let lastWheel = 0;
+    let gestureAtTop = false;
+    let upAccum = 0;
+
+    window.addEventListener('wheel', (e) => {
+      const now = performance.now();
+      const newGesture = now - lastWheel > 220;
+      lastWheel = now;
+
+      if (transitioning || lightboxOpen()) {
+        if (transitioning) e.preventDefault();
+        return;
+      }
+
+      if (mode === 'landing') {
+        if (e.deltaY > 4) enterGallery();
+        return;
+      }
+
+      if (newGesture) {
+        gestureAtTop = galleryView.scrollTop <= 0;
+        upAccum = 0;
+      }
+      if (gestureAtTop && galleryView.scrollTop <= 0 && e.deltaY < 0) {
+        upAccum += -e.deltaY;
+        if (upAccum > 60) leaveGallery();
+      } else if (e.deltaY > 0) {
+        gestureAtTop = false;
+      }
+    }, { passive: false });
+
+    // Touch: swipe up on landing enters; swipe down from the gallery top leaves
+    let touchY = null;
+    let touchAtTop = false;
+
+    window.addEventListener('touchstart', (e) => {
+      touchY = e.touches[0].clientY;
+      touchAtTop = galleryView.scrollTop <= 0;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      if (touchY === null || transitioning || lightboxOpen()) return;
+      const dy = e.touches[0].clientY - touchY;
+      if (mode === 'landing' && dy < -40) {
+        touchY = null;
+        enterGallery();
+      } else if (mode === 'gallery' && touchAtTop && galleryView.scrollTop <= 0 && dy > 70) {
+        touchY = null;
+        leaveGallery();
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => { touchY = null; });
+
+    // Keyboard
+    //   Landing:      ↓ / PageDown / Space / Enter → gallery area;  ← → change photo
+    //   Gallery area: ← → switch between sections;  ↑ ↓ scroll;  ↑ at the very top → landing
+    let heroResumeTimer = null;
+
+    // Changing the landing photo by hand pauses the slideshow; it resumes 4s after the
+    // last ← / → press (each press restarts the 4s)
+    function manualHero(step) {
+      goToHero(currentHero + step);
+      stopHeroCycling();
+      clearTimeout(heroResumeTimer);
+      heroResumeTimer = setTimeout(() => {
+        if (mode !== 'landing') return;
+        goToHero(currentHero + 1);
+        startHeroCycling();
+      }, 4000);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+      // Space / Enter on a focused button or photo should press it, not scroll
+      if ((e.key === ' ' || e.key === 'Enter') && e.target.closest && e.target.closest('button, .tile') && mode !== 'landing') return;
+
+      if (lightboxOpen()) {
+        if (e.key === 'Escape') closeLightbox();
+        else if (e.key === 'ArrowRight') showLightboxImage(lightboxIndex + 1);
+        else if (e.key === 'ArrowLeft') showLightboxImage(lightboxIndex - 1);
+        return;
+      }
+      if (transitioning) {
+        if (e.key.startsWith('Arrow') || e.key === ' ') e.preventDefault();
+        return;
+      }
+
+      if (mode === 'landing') {
+        if (['ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) {
+          e.preventDefault();
+          clearTimeout(heroResumeTimer);
+          enterGallery();
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          manualHero(e.key === 'ArrowRight' ? 1 : -1);
+        }
+        return;
+      }
+
+      // Gallery area
+      const atTop = galleryView.scrollTop <= 0;
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowRight': {
+          e.preventDefault();
+          const order = viewOrder();
+          const next = order[order.indexOf(currentView) + (e.key === 'ArrowRight' ? 1 : -1)];
+          if (next) showView(next);
+          break;
+        }
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          // Holding ↑ while scrolling up stops at the top; a fresh press there goes to the landing
+          if (atTop) { if (!e.repeat) leaveGallery(); }
+          else galleryView.scrollBy({ top: e.key === 'PageUp' ? -galleryView.clientHeight * 0.9 : -120 });
+          break;
+        case 'ArrowDown':
+        case 'PageDown':
+        case ' ':
+          e.preventDefault();
+          galleryView.scrollBy({ top: e.key === 'ArrowDown' ? 120 : galleryView.clientHeight * 0.9 });
+          break;
+        case 'Home':
+          e.preventDefault();
+          if (atTop) leaveGallery(); else galleryView.scrollTo({ top: 0 });
+          break;
+        case 'End':
+          e.preventDefault();
+          galleryView.scrollTo({ top: galleryView.scrollHeight });
+          break;
+        case 'Escape':
+          leaveGallery();
+          break;
+      }
+    });
+  </script>
+</body>
+</html>
